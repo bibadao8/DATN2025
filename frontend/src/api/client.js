@@ -6,49 +6,86 @@ export function setAuthToken(token) {
 }
 
 export async function apiRequest(path, options = {}) {
-  const tokenFromStorage = (typeof localStorage !== 'undefined') ? localStorage.getItem('accessToken') : '';
-  const bearer = authToken || tokenFromStorage || '';
-  const headers = { ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}), ...(options.headers || {}) };
+  const maxRetries = options.retries || 3;
+  const retryDelay = options.retryDelay || 500;
+  let lastError;
 
-  // Don't set Content-Type for FormData, let browser set it
-  if (!(options.body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
-  }
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const tokenFromStorage = (typeof localStorage !== 'undefined') ? localStorage.getItem('accessToken') : '';
+      const bearer = authToken || tokenFromStorage || '';
+      const headers = { ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}), ...(options.headers || {}) };
 
-  // Use backend URL from environment
-  const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:4000';
-  console.log('Using backend URL:', backendUrl, 'for path:', path);
-
-  // Ensure no double slashes
-  const cleanBackendUrl = backendUrl.replace(/\/$/, ''); // Remove trailing slash
-  const cleanPath = path.startsWith('/') ? path : `/${path}`; // Ensure leading slash
-  const fullUrl = path.startsWith('http') ? path : `${cleanBackendUrl}${cleanPath}`;
-
-  const response = await fetch(fullUrl, {
-    credentials: 'include',
-    headers,
-    ...options,
-  });
-  const contentType = response.headers.get('content-type') || '';
-  const isJson = contentType.includes('application/json');
-  const data = isJson ? await response.json() : await response.text();
-  if (!response.ok) {
-    if (response.status === 401) {
-      try {
-        authToken = '';
-        if (typeof localStorage !== 'undefined') {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('currentUser');
-        }
-      } finally {
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
+      // Don't set Content-Type for FormData, let browser set it
+      if (!(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
       }
+
+      // Use backend URL from environment
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:4000';
+      console.log('Using backend URL:', backendUrl, 'for path:', path);
+
+      // Ensure no double slashes
+      const cleanBackendUrl = backendUrl.replace(/\/$/, ''); // Remove trailing slash
+      const cleanPath = path.startsWith('/') ? path : `/${path}`; // Ensure leading slash
+      const fullUrl = path.startsWith('http') ? path : `${cleanBackendUrl}${cleanPath}`;
+
+      const response = await fetch(fullUrl, {
+        credentials: 'include',
+        headers,
+        ...options,
+      });
+      const contentType = response.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+      const data = isJson ? await response.json() : await response.text();
+      
+      if (!response.ok) {
+        // Don't retry on 401 or 403
+        if (response.status === 401) {
+          try {
+            authToken = '';
+            if (typeof localStorage !== 'undefined') {
+              localStorage.removeItem('accessToken');
+              localStorage.removeItem('currentUser');
+            }
+          } finally {
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
+          }
+          throw new Error(data?.error || response.statusText);
+        }
+        
+        if (response.status === 403) {
+          throw new Error(data?.error || response.statusText);
+        }
+
+        // Retry on 5xx errors or 404 (might be cold start)
+        if (response.status >= 500 || response.status === 404) {
+          throw new Error(data?.error || response.statusText);
+        }
+
+        // Don't retry on other 4xx errors
+        throw new Error(data?.error || response.statusText);
+      }
+      
+      return data;
+    } catch (error) {
+      lastError = error;
+      
+      // If this is the last attempt, throw the error
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retrying (exponential backoff)
+      const delay = retryDelay * Math.pow(2, attempt);
+      console.warn(`API request failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`, error.message);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
-    throw new Error(data?.error || response.statusText);
   }
-  return data;
+
+  throw lastError;
 }
 
 export const api = {
