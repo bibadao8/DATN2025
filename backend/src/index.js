@@ -48,19 +48,45 @@ const __dirname = path.dirname(__filename);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 const port = Number(process.env.PORT || 4000);
-// Allow Vercel domains for CORS
-const allowedOrigin = process.env.FRONTEND_URL || [
+
+// CORS configuration
+const allowedOrigins = [
   'http://localhost:3000', // Development
-  'https://datn-2025-rwsy-5kfgwgoff-bis-projects-90e2b389.vercel.app', // Frontend Vercel
-  'https://datn-2025-rwsy-rag6yz4zq-bis-projects-90e2b389.vercel.app'  // Alternative Vercel
+  'https://datn-2025-rwsy.vercel.app', // Production frontend
 ];
 
-app.use(
-  cors({
-    origin: allowedOrigin === '*' ? true : allowedOrigin,
-    credentials: true,
-  })
-);
+// Add FRONTEND_URL from env if exists
+if (process.env.FRONTEND_URL && process.env.FRONTEND_URL !== '*') {
+  // Remove trailing slash if exists
+  const cleanUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+  if (!allowedOrigins.includes(cleanUrl)) {
+    allowedOrigins.push(cleanUrl);
+  }
+}
+
+// Allow all Vercel preview deployments
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc)
+    if (!origin) return callback(null, true);
+    
+    // Allow if in whitelist
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Allow Vercel preview deployments
+    if (origin.includes('vercel.app')) {
+      return callback(null, true);
+    }
+    
+    // Reject others
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 // security middlewares
 app.use(helmet());
