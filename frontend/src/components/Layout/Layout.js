@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import ChatPopup from '../Chat/ChatPopup';
+import { getAvatarUrl, getInitials, getAvatarColor } from '../../utils/avatarHelper';
 import {
   Box,
   Drawer,
@@ -261,10 +262,27 @@ const Layout = () => {
           color="inherit"
           >
           <Avatar
-          src={currentUser?.avatar ? (currentUser.avatar.startsWith('http') ? currentUser.avatar : `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:4000'}${currentUser.avatar}`) : undefined}
-            sx={{ width: 32, height: 32 }}
+            src={getAvatarUrl(currentUser?.avatar)}
+            alt={displayName}
+            sx={{ 
+              width: 32, 
+              height: 32,
+              bgcolor: currentUser?.avatar ? 'transparent' : getAvatarColor(displayName),
+              border: '2px solid white',
+              boxShadow: 1,
+              cursor: 'pointer',
+              transition: 'transform 0.2s',
+              '&:hover': {
+                transform: 'scale(1.1)'
+              }
+            }}
+            imgProps={{
+              onError: (e) => {
+                e.target.style.display = 'none';
+              }
+            }}
           >
-            {displayName.charAt(0).toUpperCase()}
+            {getInitials(displayName)}
           </Avatar>
           </IconButton>
           <Menu
@@ -281,7 +299,41 @@ const Layout = () => {
             }}
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
+            PaperProps={{
+              sx: { minWidth: 220, mt: 1 }
+            }}
           >
+            <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #e0e0e0' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Avatar
+                  src={getAvatarUrl(currentUser?.avatar)}
+                  alt={displayName}
+                  sx={{ 
+                    width: 40, 
+                    height: 40,
+                    bgcolor: getAvatarColor(displayName)
+                  }}
+                >
+                  {getInitials(displayName)}
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    {displayName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {roleLabel}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+            {isStudent && (
+              <MenuItem onClick={() => { navigate('/student/profile'); handleMenuClose(); }}>
+                <ListItemIcon>
+                  <Person fontSize="small" />
+                </ListItemIcon>
+                Hồ sơ cá nhân
+              </MenuItem>
+            )}
             <MenuItem onClick={handleLogout}>
               <ListItemIcon>
                 <Logout fontSize="small" />
