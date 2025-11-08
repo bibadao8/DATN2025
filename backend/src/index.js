@@ -18,14 +18,16 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const app = express();
-const server = createServer(app);
-const io = new Server(server, {
+
+// For Vercel serverless, don't create HTTP server
+const server = process.env.VERCEL ? null : createServer(app);
+const io = server ? new Server(server, {
   cors: {
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true
   }
-});
+}) : null;
 
 // Trust the first proxy (needed when behind dev proxy to respect X-Forwarded-For)
 app.set('trust proxy', 1);
