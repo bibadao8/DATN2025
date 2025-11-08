@@ -183,6 +183,14 @@ const ChatPopup = () => {
   useEffect(() => {
     if (currentUser && !socket) {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:4000';
+      
+      // Disable Socket.IO on Vercel production (not supported on serverless)
+      const isProduction = backendUrl.includes('vercel.app');
+      if (isProduction) {
+        console.log('Socket.IO disabled on production (Vercel serverless limitation)');
+        return;
+      }
+      
       const newSocket = io(backendUrl, {
         auth: {
           token: localStorage.getItem('accessToken')
