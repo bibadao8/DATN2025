@@ -37,7 +37,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 const port = Number(process.env.PORT || 4000);
 const allowedOrigin = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production'
-  ? ['https://datn-2025-rwsy-rag6yz4zq-bis-projects-90e2b389.vercel.app']
+  ? ['https://datn-2025-rwsy-5kfgwgoff-bis-projects-90e2b389.vercel.app', 'https://datn-2025-rwsy-rag6yz4zq-bis-projects-90e2b389.vercel.app']
   : ['http://localhost:3000']);
 
 app.use(
