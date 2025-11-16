@@ -625,17 +625,13 @@ adminRouter.post('/send-notification', async (req, res) => {
     return res.status(404).json({ error: 'RECIPIENT_NOT_FOUND' });
   }
 
-  // Get recipient's enrolled classes to determine notification context
-  const enrollments = await EnrollmentModel.find({ studentId: recipientId, status: 'enrolled' }).lean();
-  const classId = enrollments.length > 0 ? enrollments[0].classId : null; // Use first enrolled class
-
   const { NotificationModel } = await import('../../models/Notification.js');
 
   try {
     await NotificationModel.create({
       recipientId,
       senderId: req.user.id,
-      classId,
+      classId: null, // Admin notifications are system-wide, not tied to a class
       type: 'admin_notification',
       title,
       content,
