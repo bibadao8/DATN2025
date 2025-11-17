@@ -4,7 +4,7 @@ const NotificationSchema = new mongoose.Schema(
   {
     recipientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // Sinh viên nhận thông báo
     senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Giảng viên gửi
-    classId: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', required: true, index: true }, // Lớp học
+    classId: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', required: false, index: true }, // Lớp học (optional for admin notifications)
     type: {
       type: String,
       enum: ['assignment_created', 'assignment_graded', 'document_uploaded', 'announcement_created', 'admin_notification'],
